@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}Medicine Reminders – MediCare Hub{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="page-header">
+    <div class="page-title-wrap">
+      <h1>Medicine Reminders &amp; Schedule</h1>
+      <p>Real-time daily dosing timetable. Log doses to keep medicine stock updated automatically.</p>
+    </div>
+    <div class="page-actions">
+      <a href="{{ url_for('medicine_history') }}" class="btn btn-secondary">
+        <i class="fas fa-history"></i> View History
+      </a>
+      <button type="button" class="btn btn-secondary" onclick="requestNotificationPermission()">
+        <i class="fas fa-bell"></i> Enable Browser Alerts
+      </button>
+      <button type="button" class="btn btn-secondary" onclick="testNotification()">
+        <i class="fas fa-paper-plane"></i> Test Notification
+      </button>
+    </div>
+  </div>
+
+  <!-- View Controls & Filter Bar -->
+  <div class="prescriptions-filter-bar">
+    <div style="display: flex; gap: 0.5rem;">
+      <button type="button" class="btn btn-primary btn-sm active" id="tabDailySchedule">
+        <i class="fas fa-calendar-day"></i> Today's Schedule
+      </button>
+      <button type="button" class="btn btn-secondary btn-sm" id="tabWeeklySchedule">
+        <i class="fas fa-calendar-week"></i> Weekly Overview
+      </button>
+    </div>
+
+    <div style="margin-left: auto; min-width: 200px;">
+      <select id="filterScheduleMember" class="form-control form-select">
+        <option value="">All Family Members</option>
+        {% for member in family_members %}
+          <option value="{{ member.id }}">{{ member.full_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <!-- Daily Schedule View -->
+  <div id="dailyScheduleView">
+    <div style="display: flex; flex-direction: column; gap: 2rem;">
+
+      <!-- Loop through slots: Morning, Afternoon, Evening, Night -->
+      {% for slot_name, slot_info in [
+        ('Morning', {'time': '08:00 AM', 'icon': 'fa-sun', 'color': '#FFA726'}),
+        ('Afternoon', {'time': '01:00 PM', 'icon': 'fa-cloud-sun', 'color': '#1769E0'}),
+        ('Evening', {'time': '06:30 PM', 'icon': 'fa-sunset', 'color': '#7C3AED'}),
+        ('Night', {'time': '09:00 PM', 'icon': 'fa-moon', 'color': '#102A43'})
+      ] %}
+      <div class="card">
+        <div class="card-header" style="background-color: #FAFCFE;">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div style="width: 38px; height: 38px; border-radius: 50%; background: {{ slot_info.color }}20; color: {{ slot_info.color }}; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+              <i class="fas {{ slot_info.icon }}"></i>
+            </div>
+            <div>
+              <h3 style="font-size: 1.05rem;">{{ slot_name }} Doses</h3>
+              <span style="font-size: 0.78rem; color: var(--text-muted);">Scheduled around {{ slot_info.time }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-body" style="padding: 0;">
+          {% set slot_doses = doses_by_slot.get(slot_name, []) %}
+          {% if slot_doses %}
+            {% for item in slot_doses %}
+            <div class="dose-item schedule-dose-card {% if item.is_taken %}taken{% elif item.is_missed %}missed{% endif %}" 
+                 data-member-id="{{ item.prescription.family_member_id }}">
+              
+              <div class="dose-time-badge" style="background-color: var(--card-bg); border: 1px solid var(--border-color);">
+                <i class="fas fa-pills" style="color: var(--primary-blue); font-size: 1.1rem; margin-bottom: 2px;"></i>
+                <span style="font-size: 0.74rem;">{{ item.time }}</span>
+              </div>
+
+              <div class="dose-details">
+                <div class="dose-medicine">
+                  {{ item.prescription.medicine_name }}
+                  <span class="badge badge-primary" style="font-size: 0.72rem;">
+                    {{ item.prescription.dosage_amount }} {{ item.prescription.dosage_unit }}
+                  </span>
+                </div>
+                <div class="dose-patient">
+                  <i class="fas fa-user-circle" style="color: var(--primary-blue);"></i>
+                  <strong>{{ item.prescription.family_member.full_name }}</strong>
+                  <span style="color: var(--text-muted); margin-left: 0.5rem;">
+                    • Stock: <strong>{{ item.prescription.available_stock|int }}</strong> units left (~{{ item.prescription.estimated_remaining_days }}d)
+                  </span>
+                </div>
+              </div>
+
+              <div class="schedule-action-wrap" style="display: flex; align-items: center; gap: 0.5rem;">
+                {% if item.is_taken %}
+                  <span class="dose-status-tag status-taken"><i class="fas fa-check-circle"></i> Taken</span>
+                {% elif item.is_missed %}
+                  <span class="dose-status-tag status-missed"><i class="fas fa-times-circle"></i> Missed</span>
+                {% else %}
+                  <button type="button" class="btn-dose-taken btn-rem-action" 
+                          data-prescription-id="{{ item.prescription.id }}" 
+                          data-slot="{{ slot_name }}" 
+                          data-action="taken">
+                    <i class="fas fa-check"></i> Taken
+                  </button>
+                  <button type="button" class="btn-dose-missed btn-rem-action" 
+                          data-prescription-id="{{ item.prescription.id }}" 
+                          data-slot="{{ slot_name }}" 
+                          data-action="missed">
+                    <i class="fas fa-times"></i> Missed
+                  </button>
+                {% endif %}
+                <a href="{{ url_for('medicine_history') }}?search={{ item.prescription.medicine_name|urlencode }}" class="btn btn-secondary btn-sm" title="View History Log" style="padding: 0.35rem 0.6rem;">
+                  <i class="fas fa-history"></i>
+                </a>
+              </div>
+
+            </div>
+            {% endfor %}
+          {% else %}
+            <div style="padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+              No medicines scheduled for {{ slot_name }}.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+
+    </div>
+  </div>
+
+  <!-- Weekly Schedule Overview View -->
+  <div id="weeklyScheduleView" style="display: none;">
+    <div class="card">
+      <div class="card-header">
+        <h3>Weekly Family Schedule Grid</h3>
+        <span class="badge badge-primary">Next 7 Days</span>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table-custom">
+            <thead>
+              <tr>
+                <th>Medicine / Patient</th>
+                <th>Time Slot</th>
+                <th>Mon</th>
+                <th>Tue</th>
+                <th>Wed</th>
+                <th>Thu</th>
+                <th>Fri</th>
+                <th>Sat</th>
+                <th>Sun</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for rx in active_prescriptions %}
+              <tr>
+                <td>
+                  <strong>{{ rx.medicine_name }}</strong>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">{{ rx.family_member.full_name }}</div>
+                </td>
+                <td>
+                  <span class="badge badge-navy">{{ rx.time_slots }}</span>
+                </td>
+                {% for day in range(7) %}
+                <td style="text-align: center;">
+                  <span style="display: inline-block; width: 14px; height: 14px; border-radius: 50%; background-color: var(--healthcare-green);" title="Scheduled dose"></span>
+                </td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function testNotification() {
+    if (!('Notification' in window)) {
+      showToast('warning', 'Notifications', 'Desktop notifications not supported in this browser.');
+      return;
+    }
+    if (Notification.permission === 'granted') {
+      new Notification('MediCare Hub Reminder', {
+        body: 'Time to take Metformin 500mg for David Johnson (Morning Dose)',
+        icon: '/static/images/logo-icon.svg'
+      });
+      showToast('success', 'Notification Sent', 'A desktop reminder alert was triggered.');
+    } else {
+      Notification.requestPermission().then(perm => {
+        if (perm === 'granted') {
+          new Notification('MediCare Hub Reminder', {
+            body: 'Desktop notifications are successfully enabled!',
+            icon: '/static/images/logo-icon.svg'
+          });
+          showToast('success', 'Permission Granted', 'Desktop notification fired.');
+        } else {
+          showToast('warning', 'Permission Required', 'Please enable notifications in your browser settings.');
+        }
+      });
+    }
+  }
+</script>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/reminders.js') }}"></script>
+{% endblock %}
+

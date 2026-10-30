@@ -1,0 +1,371 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard – MediCare Hub{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+
+  <!-- Welcome Banner -->
+  <div class="page-header">
+    <div class="page-title-wrap">
+      <h1>Hello, {{ current_user.name.split(' ')[0] }} 👋</h1>
+      <p>Here is your family's health and medicine schedule overview for today.</p>
+    </div>
+    <div class="page-actions">
+      <button type="button" class="btn btn-secondary" onclick="requestNotificationPermission()">
+        <i class="far fa-bell"></i> Enable Alerts
+      </button>
+      <a href="{{ url_for('prescriptions') }}?action=new" class="btn btn-primary">
+        <i class="fas fa-plus"></i> New Prescription
+      </a>
+    </div>
+  </div>
+
+  <!-- 4 Statistics Cards -->
+  <div class="dashboard-stats-grid">
+    <!-- Stat 1: Family Members -->
+    <div class="stat-card">
+      <div class="stat-info">
+        <h4>Family Members</h4>
+        <div class="stat-number">{{ total_members }}</div>
+        <div class="stat-desc">
+          <a href="{{ url_for('family_profiles') }}" style="color: var(--primary-blue); font-weight: 500;">
+            Manage profiles <i class="fas fa-arrow-right" style="font-size: 0.7rem;"></i>
+          </a>
+        </div>
+      </div>
+      <div class="stat-icon blue">
+        <i class="fas fa-users"></i>
+      </div>
+    </div>
+
+    <!-- Stat 2: Active Prescriptions -->
+    <div class="stat-card stat-green">
+      <div class="stat-info">
+        <h4>Active Prescriptions</h4>
+        <div class="stat-number">{{ active_prescriptions_count }}</div>
+        <div class="stat-desc">
+          <span style="color: var(--healthcare-green); font-weight: 600;">
+            <i class="fas fa-check-circle"></i> Tracking {{ active_prescriptions_count }} active
+          </span>
+        </div>
+      </div>
+      <div class="stat-icon green">
+        <i class="fas fa-pills"></i>
+      </div>
+    </div>
+
+    <!-- Stat 3: Today's Doses -->
+    <div class="stat-card stat-orange">
+      <div class="stat-info">
+        <h4>Today's Doses</h4>
+        <div class="stat-number">
+          <span id="statTodayDosesTaken">{{ today_taken_count }}</span> / {{ today_total_doses }}
+        </div>
+        <div class="stat-desc">
+          <span>{{ today_remaining_count }} dose{{ 's' if today_remaining_count != 1 else '' }} remaining</span>
+        </div>
+      </div>
+      <div class="stat-icon orange">
+        <i class="fas fa-calendar-check"></i>
+      </div>
+    </div>
+
+    <!-- Stat 4: Pending Refill Alerts -->
+    <div class="stat-card stat-red">
+      <div class="stat-info">
+        <h4>Pending Refill Alerts</h4>
+        <div class="stat-number" id="statPendingRefills">{{ pending_refills_count }}</div>
+        <div class="stat-desc">
+          {% if pending_refills_count > 0 %}
+            <span style="color: var(--danger-red); font-weight: 600;">
+              <i class="fas fa-exclamation-circle"></i> Requires attention
+            </span>
+          {% else %}
+            <span style="color: var(--healthcare-green); font-weight: 600;">
+              <i class="fas fa-check"></i> All stock sufficient
+            </span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="stat-icon red">
+        <i class="fas fa-prescription-bottle"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Action Buttons -->
+  <div class="quick-actions-bar">
+    <a href="{{ url_for('family_profiles') }}?action=add" class="quick-action-btn">
+      <i class="fas fa-user-plus"></i>
+      <span>Add Family Member</span>
+    </a>
+    <a href="{{ url_for('prescriptions') }}?action=new" class="quick-action-btn">
+      <i class="fas fa-file-medical"></i>
+      <span>Add Prescription</span>
+    </a>
+    <a href="{{ url_for('medicine_reminders') }}" class="quick-action-btn">
+      <i class="fas fa-stopwatch"></i>
+      <span>View Reminders</span>
+    </a>
+    <a href="{{ url_for('pharmacy_finder') }}" class="quick-action-btn">
+      <i class="fas fa-map-marker-alt"></i>
+      <span>Find Nearby Pharmacy</span>
+    </a>
+  </div>
+
+  <!-- Main 2-Column Dashboard Widgets -->
+  <div class="dashboard-grid-2col">
+
+    <!-- Left Column: Today's Schedule & Adherence Graph -->
+    <div style="display: flex; flex-direction: column; gap: 1.75rem;">
+
+      <!-- Today's Medicine Schedule Card -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3>Today's Medicine Schedule</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">
+              Mark doses as taken or missed to automatically adjust stock
+            </p>
+          </div>
+          <a href="{{ url_for('medicine_reminders') }}" class="btn btn-secondary btn-sm">Full Schedule</a>
+        </div>
+
+        <div class="card-body" style="padding: 0;">
+          {% if today_schedule_items %}
+            {% for item in today_schedule_items %}
+            <div class="dose-item {% if item.is_taken %}taken{% elif item.is_missed %}missed{% endif %}" id="doseItem-{{ item.prescription.id }}-{{ item.slot }}">
+              
+              <div class="dose-time-badge">
+                <span class="dose-slot-label">{{ item.slot }}</span>
+                <span>{{ item.time }}</span>
+              </div>
+
+              <div class="dose-details">
+                <div class="dose-medicine">
+                  {{ item.prescription.medicine_name }}
+                  <span class="badge badge-primary" style="font-size: 0.7rem; font-weight: 500;">
+                    {{ item.prescription.dosage_amount }} {{ item.prescription.dosage_unit }}
+                  </span>
+                </div>
+                <div class="dose-patient">
+                  <i class="fas fa-user" style="font-size: 0.7rem; color: var(--text-light);"></i>
+                  <strong>{{ item.prescription.family_member.full_name }}</strong>
+                  <span style="color: var(--text-light); margin-left: 0.5rem;">• Stock: {{ item.prescription.available_stock|int }} left</span>
+                </div>
+              </div>
+
+              <div class="dose-actions">
+                {% if item.is_taken %}
+                  <span class="dose-status-tag status-taken"><i class="fas fa-check"></i> Taken</span>
+                {% elif item.is_missed %}
+                  <span class="dose-status-tag status-missed"><i class="fas fa-times"></i> Missed</span>
+                {% else %}
+                  <button type="button" class="btn-dose-taken btn-dose-action" 
+                          data-prescription-id="{{ item.prescription.id }}" 
+                          data-slot="{{ item.slot }}" 
+                          data-action="taken"
+                          title="Mark Taken & Deduct Stock">
+                    <i class="fas fa-check"></i> Taken
+                  </button>
+                  <button type="button" class="btn-dose-missed btn-dose-action" 
+                          data-prescription-id="{{ item.prescription.id }}" 
+                          data-slot="{{ item.slot }}" 
+                          data-action="missed"
+                          title="Mark Missed">
+                    <i class="fas fa-times"></i> Missed
+                  </button>
+                {% endif %}
+              </div>
+
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <i class="fas fa-clipboard-check"></i>
+              </div>
+              <h3>No Doses Remaining Today</h3>
+              <p>All scheduled medicines for today have been completed or none are scheduled.</p>
+              <a href="{{ url_for('prescriptions') }}" class="btn btn-secondary btn-sm">Review Prescriptions</a>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Adherence Analytics Chart Card -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3>7-Day Adherence Trend</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">Daily comparison of taken vs missed doses</p>
+          </div>
+          <a href="{{ url_for('medicine_history') }}" class="btn btn-secondary btn-sm">Full Analytics</a>
+        </div>
+        <div class="card-body">
+          <div class="chart-canvas-wrap">
+            <canvas id="adherenceChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Refill Alerts, Upcoming Reminders & Pharmacy Suggestions -->
+    <div style="display: flex; flex-direction: column; gap: 1.75rem;">
+
+      <!-- Low Stock Alerts Widget -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3>Low Stock Refill Alerts</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">Medicines reaching depleted threshold</p>
+          </div>
+          <a href="{{ url_for('refill_alerts') }}" class="btn btn-secondary btn-sm">View All</a>
+        </div>
+
+        <div class="card-body" style="padding: 1rem 1.25rem;">
+          {% if low_stock_items %}
+            <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+              {% for p in low_stock_items %}
+              <div style="background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem; border-left: 4px solid {% if p.stock_status == 'critical' %}var(--danger-red){% else %}var(--warning-orange){% endif %};">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.35rem;">
+                  <strong style="color: var(--dark-navy); font-size: 0.95rem;">{{ p.medicine_name }}</strong>
+                  <span class="badge {% if p.stock_status == 'critical' %}badge-danger{% else %}badge-warning{% endif %}">
+                    {% if p.stock_status == 'critical' %}Critical ({{ p.estimated_remaining_days }}d left){% else %}Refill Soon ({{ p.estimated_remaining_days }}d left){% endif %}
+                  </span>
+                </div>
+
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                  Patient: <strong>{{ p.family_member.full_name }}</strong> • Stock: <strong>{{ p.available_stock|int }} {{ p.dosage_unit }}</strong> remaining
+                </div>
+
+                <a href="{{ url_for('pharmacy_finder') }}?medicine={{ p.medicine_name|urlencode }}" class="btn btn-primary btn-sm btn-block">
+                  <i class="fas fa-search-location"></i> Find Nearby Pharmacies
+                </a>
+              </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div style="padding: 1.5rem 1rem; text-align: center; color: var(--healthcare-green);">
+              <i class="fas fa-check-circle" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+              <strong style="color: var(--dark-navy);">Stock Levels Healthy</strong>
+              <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem;">No medicines currently below low stock threshold.</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Nearby Pharmacy Suggestions Card -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3>Nearby Stocked Pharmacies</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">Sample inventory within 5 km</p>
+          </div>
+          <a href="{{ url_for('pharmacy_finder') }}" class="btn btn-secondary btn-sm">Open Map</a>
+        </div>
+
+        <div class="card-body" style="padding: 0;">
+          {% for pharm in sample_pharmacies %}
+          <div style="padding: 0.9rem 1.25rem; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between;">
+            <div>
+              <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark-navy);">{{ pharm.name }}</div>
+              <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.15rem;">
+                <i class="fas fa-map-marker-alt" style="color: var(--primary-blue);"></i> {{ pharm.address }}
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <span class="badge badge-success" style="font-size: 0.72rem;">Open Now</span>
+              <div style="margin-top: 0.35rem;">
+                <a href="{{ url_for('pharmacy_finder') }}" class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 0.74rem;">
+                  View Stock
+                </a>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Recent Activity Feed -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Recent Health Activity</h3>
+        </div>
+        <div class="card-body" style="padding: 1rem 1.25rem;">
+          <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+            {% for act in recent_activities %}
+            <div style="display: flex; align-items: flex-start; gap: 0.75rem; font-size: 0.82rem;">
+              <div style="width: 28px; height: 28px; border-radius: 50%; background-color: var(--primary-blue-light); color: var(--primary-blue); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.75rem;">
+                <i class="fas {{ act.icon }}"></i>
+              </div>
+              <div style="flex: 1;">
+                <div style="color: var(--dark-navy); font-weight: 600;">{{ act.title }}</div>
+                <div style="color: var(--text-muted); font-size: 0.75rem;">{{ act.time }}</div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Dashboard Analytics Section (4 Full Live Charts) -->
+  <div style="margin-top: 0.5rem; margin-bottom: 2rem;">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3>Family Health &amp; Medication Analytics</h3>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">Live visualization of dose adherence, consumption, and medicine inventory</p>
+        </div>
+        <a href="{{ url_for('medicine_history') }}" class="btn btn-secondary btn-sm">
+          <i class="fas fa-chart-line"></i> View Detailed Reports
+        </a>
+      </div>
+      <div class="card-body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+          
+          <!-- Chart 1: Taken vs Missed Donut -->
+          <div style="background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
+            <div style="font-size: 0.92rem; font-weight: 700; color: var(--dark-navy); margin-bottom: 0.2rem;">Dose Adherence Ratio</div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.75rem;">Taken vs Missed Dose Distribution</div>
+            <div style="height: 220px; position: relative;">
+              <canvas id="dashboardDonutChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Chart 2: Medicine Stock Overview -->
+          <div style="background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
+            <div style="font-size: 0.92rem; font-weight: 700; color: var(--dark-navy); margin-bottom: 0.2rem;">Medicine Stock Levels Overview</div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.75rem;">Units remaining per active prescription</div>
+            <div style="height: 220px; position: relative;">
+              <canvas id="dashboardStockChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Chart 3: Monthly Medicine Consumption -->
+          <div style="background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
+            <div style="font-size: 0.92rem; font-weight: 700; color: var(--dark-navy); margin-bottom: 0.2rem;">Monthly Medicine Consumption</div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.75rem;">Dosage units consumed across prescriptions</div>
+            <div style="height: 220px; position: relative;">
+              <canvas id="dashboardConsumptionChart"></canvas>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}
+

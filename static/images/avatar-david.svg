@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <circle cx="50" cy="50" r="50" fill="#F0F4F8"/>
+  <!-- Head -->
+  <circle cx="50" cy="42" r="21" fill="#FAD0B6"/>
+  <!-- Grey hair and glasses -->
+  <path d="M28 38 C28 22, 40 18, 50 18 C60 18, 72 22, 72 38 C70 33, 62 25, 50 25 C38 25, 30 33, 28 38 Z" fill="#9AA5B1"/>
+  <rect x="36" y="38" width="11" height="8" rx="2" fill="none" stroke="#486581" stroke-width="2"/>
+  <rect x="53" y="38" width="11" height="8" rx="2" fill="none" stroke="#486581" stroke-width="2"/>
+  <line x1="47" y1="42" x2="53" y2="42" stroke="#486581" stroke-width="2"/>
+  <!-- Eyes & mustache -->
+  <circle cx="41.5" cy="42" r="2" fill="#243B53"/>
+  <circle cx="58.5" cy="42" r="2" fill="#243B53"/>
+  <path d="M43 49 C46 47, 54 47, 57 49 C55 52, 45 52, 43 49 Z" fill="#829AB1"/>
+  <!-- Clothing -->
+  <path d="M18 90 C22 68, 36 64, 50 64 C64 64, 78 68, 82 90 Z" fill="#1769E0"/>
+</svg>
+

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In – MediCare Hub{% endblock %}
+
+{% block auth_content %}
+<div class="auth-page">
+  <div class="auth-split-container">
+    
+    <!-- Left Hero & Branding Section -->
+    <div class="auth-side-brand">
+      <div class="auth-brand-header">
+        <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="MediCare Hub" class="auth-brand-logo" style="filter: brightness(0) invert(1);">
+      </div>
+
+      <div class="auth-brand-hero">
+        <h1>Your Family's Health, In One Place.</h1>
+        <p>The modern centralized platform for managing prescriptions, automatic medicine stock tracking, refill alerts, and real-time pharmacy availability.</p>
+
+        <div class="auth-feature-list">
+          <div class="auth-feature-item">
+            <i class="fas fa-check"></i>
+            <span>Track medicine schedules for children, adults &amp; seniors</span>
+          </div>
+          <div class="auth-feature-item">
+            <i class="fas fa-check"></i>
+            <span>Automatic stock deduction &amp; predictive refill alerts</span>
+          </div>
+          <div class="auth-feature-item">
+            <i class="fas fa-check"></i>
+            <span>Locate stocked nearby pharmacies with live map routing</span>
+          </div>
+        </div>
+
+        <div class="auth-illustration-wrap">
+          <img src="{{ url_for('static', filename='images/healthcare-illustration.svg') }}" alt="MediCare Hub Platform Preview">
+        </div>
+      </div>
+
+      <div style="font-size: 0.8rem; color: rgba(255, 255, 255, 0.7); z-index: 2;">
+        &copy; 2026 MediCare Hub Technologies Inc. All rights reserved.
+      </div>
+    </div>
+
+    <!-- Right Login Form Section -->
+    <div class="auth-side-form">
+      <div class="auth-form-card">
+        
+        <div class="auth-form-header">
+          <img src="{{ url_for('static', filename='images/logo-icon.svg') }}" alt="MediCare Hub" style="width: 44px; height: 44px; margin-bottom: 1rem;">
+          <h2>Welcome Back</h2>
+          <p>Please enter your credentials to access your family dashboard.</p>
+        </div>
+
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="toast toast-{{ 'danger' if category == 'error' else category }}" style="margin-bottom: 1.5rem; animation: none;">
+                <div class="toast-icon">
+                  <i class="fas {% if category == 'error' %}fa-exclamation-circle{% elif category == 'success' %}fa-check-circle{% else %}fa-info-circle{% endif %}"></i>
+                </div>
+                <div class="toast-body">
+                  <div class="toast-title">{{ category|capitalize }}</div>
+                  <div class="toast-message">{{ message }}</div>
+                </div>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <!-- Quick Demo Login Helpers -->
+        <div style="background-color: var(--primary-blue-light); border: 1.5px dashed var(--primary-blue); border-radius: var(--radius-md); padding: 1.1rem; margin-bottom: 1.5rem;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem;">
+            <div style="font-size: 0.82rem; font-weight: 800; color: var(--primary-blue); display: flex; align-items: center; gap: 0.4rem;">
+              <i class="fas fa-bolt"></i> ONE-CLICK DEMO LOGIN
+            </div>
+            <span class="badge badge-warning" style="font-size: 0.7rem; font-weight: 700;">Demo Account Ready</span>
+          </div>
+
+          <div style="font-size: 0.82rem; color: var(--dark-navy); margin-bottom: 0.75rem; background: #FFFFFF; padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+            <div><strong>Email:</strong> <code style="color: var(--primary-blue);">demo@medicarehub.com</code></div>
+            <div><strong>Password:</strong> <code style="color: var(--primary-blue);">Demo@123</code></div>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button type="button" class="btn btn-primary btn-sm" onclick="fillDemo('demo@medicarehub.com', 'Demo@123')">
+              <i class="fas fa-sign-in-alt"></i> Login as Demo Account (Sarah)
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="fillDemo('healthplus@medicarehub.com', 'Demo@123')">
+              <i class="fas fa-clinic-medical"></i> Pharmacy Admin
+            </button>
+          </div>
+        </div>
+
+        <form action="{{ url_for('login') }}" method="POST" id="loginForm">
+          <div class="form-group">
+            <label for="email" class="form-label">Email Address</label>
+            <div style="position: relative;">
+              <input type="email" id="email" name="email" class="form-control" placeholder="demo@medicarehub.com" value="demo@medicarehub.com" required autofocus>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
+              <label for="password" class="form-label" style="margin-bottom: 0;">Password</label>
+              <a href="{{ url_for('forgot_password') }}" style="font-size: 0.82rem; font-weight: 500;">Forgot Password?</a>
+            </div>
+            <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" value="Demo@123" required>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top: 1rem;">
+            <i class="fas fa-sign-in-alt"></i> Sign In to MediCare Hub
+          </button>
+        </form>
+
+        <div style="margin-top: 2rem; text-align: center; font-size: 0.9rem; color: var(--text-muted);">
+          Don't have an account yet? 
+          <a href="{{ url_for('register') }}" style="font-weight: 600; color: var(--primary-blue);">Create Account</a>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function fillDemo(email, pass) {
+    document.getElementById('email').value = email;
+    document.getElementById('password').value = pass;
+    document.getElementById('loginForm').submit();
+  }
+</script>
+{% endblock %}
+

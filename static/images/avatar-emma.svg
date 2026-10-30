@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <circle cx="50" cy="50" r="50" fill="#FFF5F5"/>
+  <!-- Pigtails -->
+  <circle cx="27" cy="40" r="8" fill="#B7791F"/>
+  <circle cx="73" cy="40" r="8" fill="#B7791F"/>
+  <!-- Head -->
+  <circle cx="50" cy="44" r="19" fill="#FEEBC8"/>
+  <!-- Blonde bangs -->
+  <path d="M31 38 C33 26, 40 22, 50 22 C60 22, 67 26, 69 38 C65 32, 58 31, 50 31 C42 31, 35 32, 31 38 Z" fill="#D69E2E"/>
+  <circle cx="44" cy="44" r="2.5" fill="#243B53"/>
+  <circle cx="56" cy="44" r="2.5" fill="#243B53"/>
+  <!-- Cute smile -->
+  <path d="M45 52 Q50 56 55 52" stroke="#E53E3E" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <!-- Pink dress -->
+  <path d="M24 90 C26 71, 36 67, 50 67 C64 67, 74 71, 76 90 Z" fill="#ED64A6"/>
+</svg>
+

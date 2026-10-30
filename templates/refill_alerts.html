@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Refill Alerts – MediCare Hub{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="page-header">
+    <div class="page-title-wrap">
+      <h1>Prescription Refill Alerts</h1>
+      <p>Automated stock monitoring predicts when family medicines will run out based on prescribed daily dosages.</p>
+    </div>
+    <div class="page-actions">
+      <a href="{{ url_for('pharmacy_finder') }}" class="btn btn-secondary">
+        <i class="fas fa-map-marked-alt"></i> Locate Pharmacies
+      </a>
+    </div>
+  </div>
+
+  <!-- Priority Summary Banners -->
+  {% if critical_alerts %}
+  <div class="refill-priority-banner critical">
+    <div style="display: flex; align-items: center; gap: 0.85rem;">
+      <i class="fas fa-exclamation-circle" style="font-size: 1.5rem;"></i>
+      <div>
+        <strong>Critical Attention Needed ({{ critical_alerts|length }} Medicine{{ 's' if critical_alerts|length != 1 else '' }})</strong>
+        <p style="font-size: 0.85rem; margin-top: 0.1rem;">These medicines will run out in 2 days or fewer. Please restock immediately.</p>
+      </div>
+    </div>
+    <a href="{{ url_for('pharmacy_finder') }}" class="btn btn-danger btn-sm">Find Nearby Stock</a>
+  </div>
+  {% endif %}
+
+  <!-- Active Alerts List -->
+  <div class="refill-card-list">
+    {% for alert in alerts %}
+    {% set p = alert.prescription %}
+    <div class="refill-item-card {{ alert.priority }}" id="alertCard-{{ alert.id }}">
+      
+      <div class="refill-item-left">
+        <div class="refill-priority-indicator">
+          {% if alert.priority == 'critical' %}
+            <i class="fas fa-radiation-alt"></i>
+          {% elif alert.priority == 'soon' %}
+            <i class="fas fa-hourglass-half"></i>
+          {% else %}
+            <i class="fas fa-check-circle"></i>
+          {% endif %}
+        </div>
+
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+            <div class="refill-med-name">{{ alert.medicine_name }}</div>
+            <span class="badge {% if alert.priority == 'critical' %}badge-danger{% elif alert.priority == 'soon' %}badge-warning{% else %}badge-success{% endif %}">
+              {{ alert.priority|upper }} PRIORITY
+            </span>
+          </div>
+
+          <div class="refill-patient-sub">
+            <i class="fas fa-user-circle" style="color: var(--primary-blue);"></i>
+            Patient: <strong>{{ p.family_member.full_name }}</strong> ({{ p.family_member.relationship }})
+            {% if p.doctor_name %}• Prescribed by: {{ p.doctor_name }}{% endif %}
+          </div>
+
+          <div class="refill-stat-pill" style="background-color: var(--bg-color); border: 1px solid var(--border-color);">
+            <span>Remaining Stock: <strong style="color: var(--dark-navy);">{{ p.available_stock|int }} {{ p.dosage_unit }}</strong></span>
+            <span>• Daily Need: {{ p.daily_consumption }} {{ p.dosage_unit }}</span>
+            <span>• Estimated Supply: <strong style="color: {% if alert.priority == 'critical' %}var(--danger-red){% else %}var(--warning-dark){% endif %};">~{{ p.estimated_remaining_days }} Days</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="refill-item-actions">
+        <a href="{{ url_for('pharmacy_finder') }}?medicine={{ alert.medicine_name|urlencode }}" class="btn btn-secondary btn-sm">
+          <i class="fas fa-search-location"></i> Find Nearby Pharmacies
+        </a>
+
+        <button type="button" class="btn btn-primary btn-sm" onclick='openRefillModal({{ p.id }}, "{{ alert.medicine_name|escape }}", {{ p.available_stock }})'>
+          <i class="fas fa-box-open"></i> Mark Refilled
+        </button>
+
+        <form action="{{ url_for('dismiss_refill_alert') }}" method="POST" style="margin: 0;">
+          <input type="hidden" name="alert_id" value="{{ alert.id }}">
+          <button type="submit" class="btn btn-secondary btn-sm" title="Dismiss Alert" style="color: var(--text-muted);">
+            <i class="fas fa-check"></i> Dismiss
+          </button>
+        </form>
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if not alerts %}
+    <div class="empty-state">
+      <div class="empty-state-icon" style="background-color: var(--healthcare-green-light); color: var(--healthcare-green);">
+        <i class="fas fa-check-double"></i>
+      </div>
+      <h3>All Prescription Stocks Are Healthy</h3>
+      <p>No medicines are currently running low or near the refill threshold.</p>
+      <a href="{{ url_for('prescriptions') }}" class="btn btn-secondary">Review Prescriptions</a>
+    </div>
+  {% endif %}
+
+  <!-- Past Refill Logs Table -->
+  {% if refill_logs %}
+  <div class="card" style="margin-top: 2.5rem;">
+    <div class="card-header">
+      <h3>Recent Refill History</h3>
+      <span class="badge badge-primary">{{ refill_logs|length }} Restocked</span>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table-custom">
+          <thead>
+            <tr>
+              <th>Medicine</th>
+              <th>Date Refilled</th>
+              <th>Quantity Added</th>
+              <th>Stock Before &rarr; After</th>
+              <th>Pharmacy</th>
+              <th>Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in refill_logs %}
+            <tr>
+              <td><strong>{{ log.prescription.medicine_name if log.prescription else 'Medicine' }}</strong></td>
+              <td>{{ log.refilled_at.strftime('%b %d, %Y') }}</td>
+              <td><span class="badge badge-success">+{{ log.added_quantity|int }}</span></td>
+              <td>{{ log.previous_stock|int }} &rarr; <strong>{{ log.new_stock|int }}</strong></td>
+              <td>{{ log.pharmacy_name or 'Local Pharmacy' }}</td>
+              <td>{{ '$%.2f'|format(log.cost) if log.cost else 'N/A' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Modal: Mark Medicine As Refilled -->
+<div class="modal-overlay" id="markRefilledModal">
+  <div class="modal-container" style="max-width: 520px;">
+    <div class="modal-header">
+      <h3>Record Medicine Refill</h3>
+      <button type="button" class="modal-close-btn" onclick="closeModal('markRefilledModal')">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <form action="{{ url_for('record_refill') }}" method="POST" id="refillForm">
+      <input type="hidden" name="prescription_id" id="refillRxId">
+
+      <div class="modal-body">
+        <div style="background-color: var(--primary-blue-light); border-radius: var(--radius-md); padding: 0.9rem; margin-bottom: 1.25rem;">
+          <div style="font-weight: 700; color: var(--primary-blue);" id="refillMedTitle">Medicine Name</div>
+          <div style="font-size: 0.8rem; color: var(--navy-light);" id="refillCurrentStock">Current Stock: 0</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="added_quantity">Newly Purchased Quantity *</label>
+          <input type="number" step="1" id="added_quantity" name="added_quantity" class="form-control" value="30" required autofocus>
+          <div class="form-hint">This quantity will be added directly to available stock.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="pharmacy_name">Pharmacy Purchased From</label>
+          <input type="text" id="pharmacy_name" name="pharmacy_name" class="form-control" placeholder="e.g. HealthPlus Pharmacy">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="cost">Total Cost ($)</label>
+            <input type="number" step="0.01" id="cost" name="cost" class="form-control" placeholder="15.00">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="refill_notes">Notes / Batch #</label>
+            <input type="text" id="refill_notes" name="notes" class="form-control" placeholder="Optional notes">
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('markRefilledModal')">Cancel</button>
+        <button type="submit" class="btn btn-success">
+          <i class="fas fa-check-circle"></i> Confirm Restock &amp; Resolve Alert
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openRefillModal(rxId, medName, currentStock) {
+    document.getElementById('refillRxId').value = rxId;
+    document.getElementById('refillMedTitle').textContent = medName;
+    document.getElementById('refillCurrentStock').textContent = `Current Stock on Record: ${Math.round(currentStock)} units`;
+    openModal('markRefilledModal');
+  }
+</script>
+{% endblock %}
+

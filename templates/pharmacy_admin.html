@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}Pharmacy Management Portal – MediCare Hub{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="page-header">
+    <div class="page-title-wrap">
+      <h1>Pharmacy Manager Portal</h1>
+      <p>Manage store hours, product availability, prices, and stock levels visible to families on MediCare Hub.</p>
+    </div>
+    <div class="page-actions">
+      <button type="button" class="btn btn-primary" onclick="openAddInventoryModal()">
+        <i class="fas fa-plus"></i> Add Medicine to Inventory
+      </button>
+    </div>
+  </div>
+
+  {% if pharmacy %}
+  <!-- Store Summary Card -->
+  <div class="card" style="margin-bottom: 2rem;">
+    <div class="card-body" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 54px; height: 54px; border-radius: var(--radius-md); background: var(--healthcare-green-light); color: var(--healthcare-green); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+          <i class="fas fa-clinic-medical"></i>
+        </div>
+        <div>
+          <h2 style="font-size: 1.35rem; color: var(--dark-navy); margin-bottom: 0.2rem;">{{ pharmacy.name }}</h2>
+          <div style="font-size: 0.84rem; color: var(--text-muted);">
+            <i class="fas fa-map-marker-alt" style="color: var(--primary-blue);"></i> {{ pharmacy.address }}, {{ pharmacy.city }}
+            • <i class="fas fa-phone"></i> {{ pharmacy.phone }}
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <span class="badge badge-success" style="padding: 0.4rem 0.8rem; font-size: 0.82rem;">
+          <i class="fas fa-clock"></i> {{ pharmacy.opening_hours }}
+        </span>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="openHoursModal()">
+          <i class="fas fa-cog"></i> Update Store Info
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Inventory Table Card -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3>Store Medicine Inventory</h3>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">Live availability broadcasted to MediCare Hub search</p>
+      </div>
+      <span class="badge badge-primary">{{ pharmacy.inventory_items|length }} Products</span>
+    </div>
+
+    <div class="card-body" style="padding: 0;">
+      <div class="table-responsive">
+        <table class="table-custom">
+          <thead>
+            <tr>
+              <th>Medicine Name</th>
+              <th>Category</th>
+              <th>Unit Price</th>
+              <th>Available Stock</th>
+              <th>Status</th>
+              <th>Last Updated</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in pharmacy.inventory_items %}
+            <tr>
+              <td>
+                <strong>{{ item.medicine_name }}</strong>
+                {% if item.brand_name %}
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Brand: {{ item.brand_name }}</div>
+                {% endif %}
+              </td>
+              <td><span class="badge badge-navy">{{ item.category }}</span></td>
+              <td><strong>${{ '%.2f'|format(item.unit_price) }}</strong></td>
+              <td><strong>{{ item.stock_quantity }}</strong> {{ item.unit }}</td>
+              <td>
+                {% if item.in_stock and item.stock_quantity > 0 %}
+                  <span class="badge badge-success"><i class="fas fa-check"></i> In Stock</span>
+                {% else %}
+                  <span class="badge badge-danger"><i class="fas fa-times"></i> Out of Stock</span>
+                {% endif %}
+              </td>
+              <td style="font-size: 0.78rem; color: var(--text-muted);">
+                {{ item.last_updated.strftime('%b %d, %I:%M %p') if item.last_updated else 'Recently' }}
+              </td>
+              <td>
+                <button type="button" class="btn btn-secondary btn-sm" onclick='openEditInventoryModal({{ item.to_dict()|tojson }})'>
+                  <i class="fas fa-edit"></i> Update Stock
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon">
+      <i class="fas fa-store-slash"></i>
+    </div>
+    <h3>No Pharmacy Linked</h3>
+    <p>Your account is not yet connected to a pharmacy store. You can manage demo pharmacy data as an administrator.</p>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Modal: Add / Update Inventory Item -->
+<div class="modal-overlay" id="inventoryModal">
+  <div class="modal-container" style="max-width: 520px;">
+    <div class="modal-header">
+      <h3 id="invModalTitle">Update Product Stock</h3>
+      <button type="button" class="modal-close-btn" onclick="closeModal('inventoryModal')">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <form action="{{ url_for('save_pharmacy_inventory') }}" method="POST" id="inventoryForm">
+      <input type="hidden" name="inventory_id" id="formInvId">
+      <input type="hidden" name="pharmacy_id" value="{{ pharmacy.id if pharmacy else '' }}">
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="inv_medicine_name">Medicine Name *</label>
+          <input type="text" id="inv_medicine_name" name="medicine_name" class="form-control" placeholder="e.g. Metformin 500mg" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="inv_brand_name">Brand Name</label>
+            <input type="text" id="inv_brand_name" name="brand_name" class="form-control" placeholder="e.g. Glucophage">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="inv_category">Category</label>
+            <select id="inv_category" name="category" class="form-control form-select">
+              <option value="Tablets">Tablets</option>
+              <option value="Capsules">Capsules</option>
+              <option value="Syrup">Syrup</option>
+              <option value="Inhaler">Inhaler</option>
+              <option value="Drops">Drops</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="inv_stock_quantity">Stock Quantity *</label>
+            <input type="number" id="inv_stock_quantity" name="stock_quantity" class="form-control" value="50" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="inv_unit_price">Price Per Unit ($) *</label>
+            <input type="number" step="0.01" id="inv_unit_price" name="unit_price" class="form-control" value="12.50" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Availability Status</label>
+          <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; cursor: pointer;">
+            <input type="checkbox" id="inv_in_stock" name="in_stock" value="true" checked>
+            <span>Product is available in stock</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('inventoryModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-save"></i> Save Product
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Update Hours & Info -->
+<div class="modal-overlay" id="hoursModal">
+  <div class="modal-container" style="max-width: 500px;">
+    <div class="modal-header">
+      <h3>Update Pharmacy Information</h3>
+      <button type="button" class="modal-close-btn" onclick="closeModal('hoursModal')">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <form action="{{ url_for('update_pharmacy_details') }}" method="POST">
+      <input type="hidden" name="pharmacy_id" value="{{ pharmacy.id if pharmacy else '' }}">
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="pharm_hours">Business Hours</label>
+          <input type="text" id="pharm_hours" name="opening_hours" class="form-control" value="{{ pharmacy.opening_hours if pharmacy else '' }}" placeholder="8:00 AM - 10:00 PM">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="pharm_phone">Contact Phone</label>
+          <input type="tel" id="pharm_phone" name="phone" class="form-control" value="{{ pharmacy.phone if pharmacy else '' }}">
+        </div>
+
+        <div class="form-group">
+          <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; cursor: pointer;">
+            <input type="checkbox" name="is_open_24h" value="true" {% if pharmacy and pharmacy.is_open_24h %}checked{% endif %}>
+            <span>Open 24 Hours (Always open)</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('hoursModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openAddInventoryModal() {
+    document.getElementById('invModalTitle').textContent = 'Add Medicine to Inventory';
+    document.getElementById('inventoryForm').reset();
+    document.getElementById('formInvId').value = '';
+    document.getElementById('inv_in_stock').checked = true;
+    openModal('inventoryModal');
+  }
+
+  function openEditInventoryModal(item) {
+    document.getElementById('invModalTitle').textContent = 'Update: ' + item.medicine_name;
+    document.getElementById('formInvId').value = item.id;
+    document.getElementById('inv_medicine_name').value = item.medicine_name;
+    document.getElementById('inv_brand_name').value = item.brand_name || '';
+    document.getElementById('inv_category').value = item.category;
+    document.getElementById('inv_stock_quantity').value = item.stock_quantity;
+    document.getElementById('inv_unit_price').value = item.unit_price;
+    document.getElementById('inv_in_stock').checked = item.in_stock;
+    openModal('inventoryModal');
+  }
+
+  function openHoursModal() {
+    openModal('hoursModal');
+  }
+</script>
+{% endblock %}
+

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <circle cx="50" cy="50" r="50" fill="#E6FFFA"/>
+  <circle cx="50" cy="42" r="20" fill="#FBD5BC"/>
+  <!-- Short hair -->
+  <path d="M30 38 C30 24, 38 18, 50 18 C62 18, 70 24, 70 38 C68 31, 60 28, 50 28 C40 28, 32 31, 30 38 Z" fill="#2D3748"/>
+  <circle cx="43" cy="42" r="2.5" fill="#1A202C"/>
+  <circle cx="57" cy="42" r="2.5" fill="#1A202C"/>
+  <!-- Doctor White Coat & Stethoscope -->
+  <path d="M18 90 C22 66, 36 62, 50 62 C64 62, 78 66, 82 90 Z" fill="#319795"/>
+  <path d="M30 65 L50 82 L70 65 L78 90 L22 90 Z" fill="#FFFFFF"/>
+  <path d="M42 63 C42 74, 58 74, 58 63" stroke="#4A5568" stroke-width="2.5" fill="none"/>
+  <circle cx="50" cy="74" r="3" fill="#E2E8F0" stroke="#4A5568" stroke-width="1.5"/>
+</svg>
+

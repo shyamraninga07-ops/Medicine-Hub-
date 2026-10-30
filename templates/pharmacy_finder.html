@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Pharmacy Availability Finder – MediCare Hub{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="page-header" style="margin-bottom: 1.25rem;">
+    <div class="page-title-wrap">
+      <h1>Nearby Pharmacy Availability Finder</h1>
+      <p>Locate verified local pharmacies stocking your family's prescribed medicines in real-time.</p>
+    </div>
+    <div class="page-actions">
+      {% if session.get('user_role') == 'pharmacy_admin' %}
+        <a href="{{ url_for('pharmacy_admin') }}" class="btn btn-secondary">
+          <i class="fas fa-store"></i> Manage Pharmacy Inventory
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Interactive Map & Search Layout -->
+  <div class="pharmacy-layout-container">
+
+    <!-- Left Search & Results Panel -->
+    <div class="pharmacy-sidebar-panel">
+      
+      <div class="pharmacy-search-header">
+        <div class="form-group" style="margin-bottom: 0.75rem;">
+          <div style="position: relative;">
+            <i class="fas fa-search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-light);"></i>
+            <input type="text" id="pharmacyMedSearch" class="form-control" style="padding-left: 2.5rem;" 
+                   placeholder="Search medicine (e.g. Metformin 500mg)..." value="{{ prefilled_medicine or '' }}">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+          <div>
+            <select id="pharmacyDistanceFilter" class="form-control form-select" style="font-size: 0.8rem; padding: 0.45rem 1.8rem 0.45rem 0.65rem;">
+              <option value="999">Any Distance</option>
+              <option value="2">Within 2 km</option>
+              <option value="5" selected>Within 5 km</option>
+              <option value="10">Within 10 km</option>
+            </select>
+          </div>
+          <div>
+            <select id="pharmacyAvailabilityFilter" class="form-control form-select" style="font-size: 0.8rem; padding: 0.45rem 1.8rem 0.45rem 0.65rem;">
+              <option value="all">All Pharmacies</option>
+              <option value="in_stock" selected>In Stock Only</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">
+          <span>Nearby Pharmacies</span>
+          <span class="badge badge-primary" id="pharmacyCountBadge">Loading...</span>
+        </div>
+      </div>
+
+      <!-- Results Scrollable List -->
+      <div class="pharmacy-list-scroll" id="pharmacyResultsList">
+        <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+          <i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--primary-blue);"></i>
+          <p>Locating pharmacies and inventory...</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Interactive Map -->
+    <div class="pharmacy-map-wrap">
+      <div id="map"></div>
+      
+      <div class="map-disclaimer-overlay">
+        <i class="fas fa-info-circle" style="color: var(--primary-blue); font-size: 1rem;"></i>
+        <span><strong>Notice:</strong> Pharmacy inventory is simulated for demonstration purposes and does not represent verified real-time stock.</span>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Modal: Pharmacy Detailed Profile & Inventory -->
+<div class="modal-overlay" id="pharmacyDetailModal">
+  <div class="modal-container" style="max-width: 650px;">
+    <div class="modal-header">
+      <h3 id="modalPharmName">Pharmacy Details</h3>
+      <button type="button" class="modal-close-btn" onclick="closeModal('pharmacyDetailModal')">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body" id="modalPharmBody">
+      <!-- Populated dynamically by pharmacy.js -->
+    </div>
+    <div class="modal-footer" id="modalPharmFooter">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('pharmacyDetailModal')">Close</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/pharmacy.js') }}"></script>
+{% endblock %}
+

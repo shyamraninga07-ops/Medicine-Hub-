@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+
+{% block title %}Prescriptions – MediCare Hub{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="page-header">
+    <div class="page-title-wrap">
+      <h1>Prescription Management</h1>
+      <p>Track dosages, administration schedules, stock levels, and clinical prescriptions for your family.</p>
+    </div>
+    <div class="page-actions">
+      <button type="button" class="btn btn-primary" onclick="openAddPrescriptionModal()">
+        <i class="fas fa-plus"></i> Add Prescription
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter & Search Bar -->
+  <div class="prescriptions-filter-bar">
+    <div style="flex: 1; min-width: 240px; position: relative;">
+      <i class="fas fa-search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-light);"></i>
+      <input type="text" id="rxSearchInput" class="form-control" style="padding-left: 2.5rem;" 
+             placeholder="Search by medicine or doctor..." value="{{ search_query or '' }}">
+    </div>
+
+    <div style="min-width: 180px;">
+      <select id="rxMemberFilter" class="form-control form-select">
+        <option value="">All Family Members</option>
+        {% for member in family_members %}
+          <option value="{{ member.id }}" {% if selected_member_id == member.id %}selected{% endif %}>{{ member.full_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="min-width: 150px;">
+      <select id="rxStatusFilter" class="form-control form-select">
+        <option value="">All Statuses</option>
+        <option value="Active" {% if selected_status == 'Active' %}selected{% endif %}>Active Only</option>
+        <option value="Completed" {% if selected_status == 'Completed' %}selected{% endif %}>Completed</option>
+        <option value="Expired" {% if selected_status == 'Expired' %}selected{% endif %}>Expired</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Prescription Cards Grid -->
+  <div class="prescription-grid" id="prescriptionsGrid">
+    {% for rx in prescriptions %}
+    <div class="rx-card" data-member-id="{{ rx.family_member_id }}" data-status="{{ rx.status }}" data-name="{{ rx.medicine_name|lower }}">
+      
+      <div class="rx-card-top">
+        <div>
+          <span class="badge badge-primary" style="margin-bottom: 0.35rem;">{{ rx.category }}</span>
+          <div class="rx-med-name">{{ rx.medicine_name }}</div>
+          {% if rx.generic_name %}
+            <div class="rx-generic">{{ rx.generic_name }}</div>
+          {% endif %}
+        </div>
+        <span class="badge {% if rx.stock_status == 'critical' %}badge-danger{% elif rx.stock_status == 'low' %}badge-warning{% else %}badge-success{% endif %}">
+          {% if rx.stock_status == 'critical' %}Critical Stock{% elif rx.stock_status == 'low' %}Refill Soon{% else %}In Stock{% endif %}
+        </span>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem; font-size: 0.85rem; color: var(--text-muted);">
+        <i class="fas fa-user-circle" style="color: var(--primary-blue);"></i>
+        <strong>{{ rx.family_member.full_name }}</strong>
+        <span style="font-size: 0.78rem;">({{ rx.family_member.relationship }})</span>
+      </div>
+
+      <!-- Stock Meter Progress Bar -->
+      <div class="rx-stock-bar-wrap">
+        <div class="rx-stock-header">
+          <span><strong>{{ rx.available_stock|int }}</strong> / {{ rx.total_quantity|int }} {{ rx.dosage_unit }}</span>
+          <span style="font-weight: 700; color: {% if rx.stock_status == 'critical' %}var(--danger-red){% elif rx.stock_status == 'low' %}var(--warning-dark){% else %}var(--healthcare-green-dark){% endif %};">
+            ~{{ rx.estimated_remaining_days }} days left
+          </span>
+        </div>
+        <div class="stock-meter">
+          {% set fill_pct = (rx.available_stock / rx.total_quantity * 100) if rx.total_quantity > 0 else 0 %}
+          <div class="stock-meter-fill fill-{{ rx.stock_status }}" style="width: {{ [100, fill_pct]|min }}%;"></div>
+        </div>
+      </div>
+
+      <!-- Dosage & Frequency Metadata -->
+      <div class="rx-meta-grid">
+        <div class="rx-meta-item">
+          <span class="rx-meta-label">Dosage</span>
+          <span class="rx-meta-val">{{ rx.dosage_amount }} {{ rx.dosage_unit }}</span>
+        </div>
+        <div class="rx-meta-item">
+          <span class="rx-meta-label">Frequency</span>
+          <span class="rx-meta-val">{{ rx.frequency }}</span>
+        </div>
+        <div class="rx-meta-item">
+          <span class="rx-meta-label">Time of Day</span>
+          <span class="rx-meta-val">{{ rx.time_slots or 'Anytime' }}</span>
+        </div>
+        <div class="rx-meta-item">
+          <span class="rx-meta-label">Daily Need</span>
+          <span class="rx-meta-val">{{ rx.daily_consumption }} {{ rx.dosage_unit }}/day</span>
+        </div>
+      </div>
+
+      {% if rx.doctor_name %}
+      <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1rem; border-top: 1px dashed var(--border-light); padding-top: 0.5rem;">
+        <i class="fas fa-user-md" style="color: var(--primary-blue);"></i> {{ rx.doctor_name }} 
+        {% if rx.doctor_contact %}• <a href="tel:{{ rx.doctor_contact }}">{{ rx.doctor_contact }}</a>{% endif %}
+      </div>
+      {% endif %}
+
+      <div class="family-card-actions" style="margin-top: auto;">
+        {% if rx.document_path %}
+          <a href="{{ rx.document_path }}" target="_blank" class="btn btn-secondary btn-sm" title="View Prescription Attachment">
+            <i class="fas fa-file-medical-alt"></i> Document
+          </a>
+        {% endif %}
+        
+        <a href="{{ url_for('pharmacy_finder') }}?medicine={{ rx.medicine_name|urlencode }}" class="btn btn-primary btn-sm" title="Find Stock in Nearby Pharmacies">
+          <i class="fas fa-search-location"></i> Find Stock
+        </a>
+
+        <div style="display: flex; gap: 0.35rem; margin-left: auto;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick='editPrescription({{ rx.to_dict()|tojson }})' title="Edit Prescription">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="confirmDeleteRx({{ rx.id }}, '{{ rx.medicine_name|escape }}')" title="Delete" style="color: var(--danger-red);">
+            <i class="fas fa-trash-alt"></i>
+          </button>
+        </div>
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if not prescriptions %}
+    <div class="empty-state">
+      <div class="empty-state-icon">
+        <i class="fas fa-prescription"></i>
+      </div>
+      <h3>No Prescriptions Found</h3>
+      <p>Add your first family prescription to activate automated daily schedules and stock countdowns.</p>
+      <button type="button" class="btn btn-primary" onclick="openAddPrescriptionModal()">
+        <i class="fas fa-plus"></i> Add First Prescription
+      </button>
+    </div>
+  {% endif %}
+
+</div>
+
+<!-- Modal: Add / Edit Prescription -->
+<div class="modal-overlay" id="prescriptionModal">
+  <div class="modal-container" style="max-width: 680px;">
+    <div class="modal-header">
+      <h3 id="rxModalTitle">Add New Prescription</h3>
+      <button type="button" class="modal-close-btn" onclick="closeModal('prescriptionModal')">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <form action="{{ url_for('save_prescription') }}" method="POST" enctype="multipart/form-data" id="prescriptionForm">
+      <input type="hidden" name="prescription_id" id="formRxId">
+
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="rx_family_member_id">Family Member *</label>
+            <select id="rx_family_member_id" name="family_member_id" class="form-control form-select" required>
+              {% for member in family_members %}
+                <option value="{{ member.id }}">{{ member.full_name }} ({{ member.relationship }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="category">Medicine Category *</label>
+            <select id="category" name="category" class="form-control form-select" required>
+              <option value="Tablets">Tablets</option>
+              <option value="Capsules">Capsules</option>
+              <option value="Syrup">Syrup (Liquid)</option>
+              <option value="Inhaler">Inhaler</option>
+              <option value="Drops">Eye / Ear Drops</option>
+              <option value="Injection">Injection</option>
+              <option value="Ointment">Ointment / Cream</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="medicine_name">Medicine Name &amp; Strength *</label>
+            <input type="text" id="medicine_name" name="medicine_name" class="form-control" placeholder="e.g. Metformin 500mg" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="generic_name">Generic / Scientific Name</label>
+            <input type="text" id="generic_name" name="generic_name" class="form-control" placeholder="e.g. Metformin HCl">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="dosage_amount">Dose Amount *</label>
+            <input type="number" step="0.1" id="dosage_amount" name="dosage_amount" class="form-control" value="1.0" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="dosage_unit">Unit *</label>
+            <select id="dosage_unit" name="dosage_unit" class="form-control form-select" required>
+              <option value="tablets">tablets</option>
+              <option value="capsules">capsules</option>
+              <option value="ml">ml</option>
+              <option value="puffs">puffs</option>
+              <option value="drops">drops</option>
+              <option value="units">units</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="frequency">Frequency *</label>
+            <select id="frequency" name="frequency" class="form-control form-select" required>
+              <option value="Once daily">Once daily</option>
+              <option value="Twice daily">Twice daily</option>
+              <option value="3 times daily">3 times daily</option>
+              <option value="4 times daily">4 times daily</option>
+              <option value="Every 8 hours">Every 8 hours</option>
+              <option value="As needed">As needed</option>
+              <option value="Once weekly">Once weekly</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Scheduled Time Slots</label>
+          <div style="display: flex; gap: 1.25rem; flex-wrap: wrap;">
+            <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.88rem; cursor: pointer;">
+              <input type="checkbox" name="time_slot" value="Morning" id="slotMorning" checked> Morning (8 AM)
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.88rem; cursor: pointer;">
+              <input type="checkbox" name="time_slot" value="Afternoon" id="slotAfternoon"> Afternoon (1 PM)
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.88rem; cursor: pointer;">
+              <input type="checkbox" name="time_slot" value="Evening" id="slotEvening"> Evening (6:30 PM)
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.88rem; cursor: pointer;">
+              <input type="checkbox" name="time_slot" value="Night" id="slotNight"> Night (9 PM)
+            </label>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="total_quantity">Total Prescribed Pack Size *</label>
+            <input type="number" step="0.5" id="total_quantity" name="total_quantity" class="form-control" value="30" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="available_stock">Current Available Stock *</label>
+            <input type="number" step="0.5" id="available_stock" name="available_stock" class="form-control" value="30" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="low_stock_threshold">Refill Alert Days</label>
+            <input type="number" id="low_stock_threshold" name="low_stock_threshold" class="form-control" value="5" title="Alert when remaining stock drops to this many days">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="doctor_name">Prescribing Doctor</label>
+            <input type="text" id="doctor_name" name="doctor_name" class="form-control" placeholder="e.g. Dr. Robert Chen, MD">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="doctor_contact">Doctor Phone / Clinic</label>
+            <input type="tel" id="doctor_contact" name="doctor_contact" class="form-control" placeholder="+1 (555) 432-1098">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="prescription_document">Prescription Attachment (JPG, PNG, PDF)</label>
+          <input type="file" id="prescription_document" name="prescription_document" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="rx_notes">Special Instructions &amp; Notes</label>
+          <textarea id="rx_notes" name="notes" class="form-control" rows="2" placeholder="Take with food, avoid citrus juice, etc."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('prescriptionModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveRxBtn">
+          <i class="fas fa-save"></i> Save Prescription
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Hidden Delete Form -->
+<form id="deleteRxForm" action="{{ url_for('delete_prescription') }}" method="POST" style="display: none;">
+  <input type="hidden" name="prescription_id" id="deleteRxId">
+</form>
+
+<script>
+  function openAddPrescriptionModal() {
+    document.getElementById('rxModalTitle').textContent = 'Add New Prescription';
+    document.getElementById('prescriptionForm').reset();
+    document.getElementById('formRxId').value = '';
+    document.getElementById('slotMorning').checked = true;
+    openModal('prescriptionModal');
+  }
+
+  function editPrescription(rx) {
+    document.getElementById('rxModalTitle').textContent = 'Edit Prescription: ' + rx.medicine_name;
+    document.getElementById('formRxId').value = rx.id;
+    document.getElementById('rx_family_member_id').value = rx.family_member_id;
+    document.getElementById('category').value = rx.category;
+    document.getElementById('medicine_name').value = rx.medicine_name;
+    document.getElementById('generic_name').value = rx.generic_name || '';
+    document.getElementById('dosage_amount').value = rx.dosage_amount;
+    document.getElementById('dosage_unit').value = rx.dosage_unit;
+    document.getElementById('frequency').value = rx.frequency;
+    document.getElementById('total_quantity').value = rx.total_quantity;
+    document.getElementById('available_stock').value = rx.available_stock;
+    document.getElementById('low_stock_threshold').value = rx.low_stock_threshold || 5;
+    document.getElementById('doctor_name').value = rx.doctor_name || '';
+    document.getElementById('doctor_contact').value = rx.doctor_contact || '';
+    document.getElementById('rx_notes').value = rx.notes || '';
+
+    // Check slot boxes
+    const slots = (rx.time_slots || '').split(',').map(s => s.trim());
+    document.getElementById('slotMorning').checked = slots.includes('Morning');
+    document.getElementById('slotAfternoon').checked = slots.includes('Afternoon');
+    document.getElementById('slotEvening').checked = slots.includes('Evening');
+    document.getElementById('slotNight').checked = slots.includes('Night');
+
+    openModal('prescriptionModal');
+  }
+
+  function confirmDeleteRx(id, name) {
+    if (confirm(`Are you sure you want to delete prescription for "${name}"?`)) {
+      document.getElementById('deleteRxId').value = id;
+      document.getElementById('deleteRxForm').submit();
+    }
+  }
+
+  // Filter handlers
+  const rxSearch = document.getElementById('rxSearchInput');
+  const rxMember = document.getElementById('rxMemberFilter');
+  const rxStatus = document.getElementById('rxStatusFilter');
+
+  function filterPrescriptions() {
+    const q = rxSearch.value.toLowerCase().trim();
+    const member = rxMember.value;
+    const status = rxStatus.value;
+
+    document.querySelectorAll('.rx-card').forEach(card => {
+      const cardMember = card.getAttribute('data-member-id');
+      const cardStatus = card.getAttribute('data-status');
+      const cardText = card.innerText.toLowerCase();
+
+      const matchQ = !q || cardText.includes(q);
+      const matchMember = !member || cardMember === member;
+      const matchStatus = !status || cardStatus === status;
+
+      card.style.display = (matchQ && matchMember && matchStatus) ? '' : 'none';
+    });
+  }
+
+  rxSearch.addEventListener('input', filterPrescriptions);
+  rxMember.addEventListener('change', filterPrescriptions);
+  rxStatus.addEventListener('change', filterPrescriptions);
+
+  // Check URL query param
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('action') === 'new') {
+    openAddPrescriptionModal();
+  }
+</script>
+{% endblock %}
+

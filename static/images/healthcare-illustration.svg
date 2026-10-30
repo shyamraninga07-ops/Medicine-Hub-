@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 400" fill="none">
+  <defs>
+    <linearGradient id="bgG" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EAF3FF"/>
+      <stop offset="100%" stop-color="#F0FFF4"/>
+    </linearGradient>
+    <linearGradient id="blueG" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1769E0"/>
+      <stop offset="100%" stop-color="#3B82F6"/>
+    </linearGradient>
+    <linearGradient id="greenG" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#20B486"/>
+      <stop offset="100%" stop-color="#34D399"/>
+    </linearGradient>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#102A43" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <!-- Background decorative blobs -->
+  <circle cx="250" cy="200" r="160" fill="url(#bgG)"/>
+  <circle cx="390" cy="110" r="45" fill="#EBF8FF" opacity="0.6"/>
+  <circle cx="100" cy="290" r="55" fill="#E6FFFA" opacity="0.7"/>
+
+  <!-- Pulse / ECG wave line -->
+  <path d="M40 200 L140 200 L160 160 L180 240 L200 130 L220 270 L240 180 L260 210 L280 200 L460 200" 
+        stroke="#CBD5E1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
+  <path d="M140 200 L160 160 L180 240 L200 130 L220 270 L240 180 L260 210 L280 200" 
+        stroke="url(#blueG)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Central Floating Dashboard Card (Refill & Prescription Tracker) -->
+  <g filter="url(#softShadow)">
+    <rect x="130" y="80" width="240" height="240" rx="24" fill="#FFFFFF"/>
+    
+    <!-- Header of card -->
+    <rect x="150" y="105" width="40" height="40" rx="12" fill="url(#blueG)"/>
+    <!-- Cross on card icon -->
+    <rect x="168" y="117" width="4" height="16" rx="2" fill="#FFFFFF"/>
+    <rect x="162" y="123" width="16" height="4" rx="2" fill="#FFFFFF"/>
+
+    <text x="202" y="122" font-family="'Inter', sans-serif" font-weight="700" font-size="14" fill="#102A43">Daily Health Rx</text>
+    <text x="202" y="137" font-family="'Inter', sans-serif" font-weight="500" font-size="11" fill="#627D98">4 doses scheduled today</text>
+
+    <!-- Schedule Item 1 -->
+    <rect x="150" y="160" width="200" height="42" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+    <circle cx="170" cy="181" r="10" fill="#DEF7EC"/>
+    <path d="M166 181 L169 184 L175 177" stroke="#046C4E" stroke-width="2" stroke-linecap="round"/>
+    <text x="190" y="177" font-family="'Inter', sans-serif" font-weight="600" font-size="12" fill="#1E293B">Metformin 500mg</text>
+    <text x="190" y="191" font-family="'Inter', sans-serif" font-size="10" fill="#64748B">08:00 AM • David • Taken</text>
+
+    <!-- Schedule Item 2 -->
+    <rect x="150" y="212" width="200" height="42" rx="10" fill="#FEF3C7" stroke="#FDE68A" stroke-width="1"/>
+    <circle cx="170" cy="233" r="10" fill="#D97706"/>
+    <text x="167" y="237" font-family="'Inter', sans-serif" font-weight="700" font-size="11" fill="#FFFFFF">!</text>
+    <text x="190" y="229" font-family="'Inter', sans-serif" font-weight="600" font-size="12" fill="#92400E">Refill Alert Soon</text>
+    <text x="190" y="243" font-family="'Inter', sans-serif" font-size="10" fill="#B45309">Amoxicillin • 3 days left</text>
+
+    <!-- Pharmacy Locator Pill -->
+    <g transform="translate(150, 268)">
+      <rect x="0" y="0" width="200" height="34" rx="17" fill="url(#greenG)"/>
+      <circle cx="18" cy="17" r="7" fill="#FFFFFF" opacity="0.3"/>
+      <text x="36" y="22" font-family="'Inter', sans-serif" font-weight="700" font-size="11" fill="#FFFFFF">5 Nearby Pharmacies Stocked</text>
+    </g>
+  </g>
+
+  <!-- Floating Capsule Left -->
+  <g transform="translate(70, 110) rotate(-25)" filter="url(#softShadow)">
+    <rect x="0" y="0" width="26" height="56" rx="13" fill="#1769E0"/>
+    <path d="M0 28 L26 28 L26 43 C26 50.17 20.17 56 13 56 C5.83 56 0 50.17 0 43 Z" fill="#20B486"/>
+  </g>
+
+  <!-- Floating Medicine Bottle Right -->
+  <g transform="translate(365, 190) rotate(15)" filter="url(#softShadow)">
+    <rect x="0" y="16" width="56" height="80" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2"/>
+    <rect x="10" y="4" width="36" height="14" rx="3" fill="#1769E0"/>
+    <rect x="6" y="36" width="44" height="42" rx="4" fill="#EAF3FF"/>
+    <!-- Medical Cross on label -->
+    <rect x="25" y="48" width="6" height="18" rx="2" fill="#1769E0"/>
+    <rect x="19" y="54" width="18" height="6" rx="2" fill="#1769E0"/>
+  </g>
+
+  <!-- Floating Shield Badge -->
+  <g transform="translate(70, 230)" filter="url(#softShadow)">
+    <circle cx="24" cy="24" r="24" fill="#FFFFFF"/>
+    <circle cx="24" cy="24" r="18" fill="url(#greenG)"/>
+    <path d="M19 24 L22 27 L29 20" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
+

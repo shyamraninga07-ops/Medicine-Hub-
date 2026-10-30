@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Create Account – MediCare Hub{% endblock %}
+
+{% block auth_content %}
+<div class="auth-page">
+  <div class="auth-split-container">
+    
+    <!-- Left Hero & Branding Section -->
+    <div class="auth-side-brand">
+      <div class="auth-brand-header">
+        <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="MediCare Hub" class="auth-brand-logo" style="filter: brightness(0) invert(1);">
+      </div>
+
+      <div class="auth-brand-hero">
+        <h1>Join MediCare Hub Today.</h1>
+        <p>Set up your family health ecosystem in minutes. Add profiles, import prescriptions, schedule medicine alerts, and connect to trusted local pharmacies.</p>
+
+        <div class="auth-feature-list">
+          <div class="auth-feature-item">
+            <i class="fas fa-shield-alt"></i>
+            <span>Private &amp; Secure Health Records with Role Isolation</span>
+          </div>
+          <div class="auth-feature-item">
+            <i class="fas fa-bell"></i>
+            <span>Smart browser notifications when doses are due</span>
+          </div>
+          <div class="auth-feature-item">
+            <i class="fas fa-prescription"></i>
+            <span>Document uploads (PDF, PNG, JPG) with instant preview</span>
+          </div>
+        </div>
+
+        <div class="auth-illustration-wrap">
+          <img src="{{ url_for('static', filename='images/healthcare-illustration.svg') }}" alt="MediCare Hub Setup">
+        </div>
+      </div>
+
+      <div style="font-size: 0.8rem; color: rgba(255, 255, 255, 0.7); z-index: 2;">
+        &copy; 2026 MediCare Hub Technologies Inc. All rights reserved.
+      </div>
+    </div>
+
+    <!-- Right Register Form Section -->
+    <div class="auth-side-form">
+      <div class="auth-form-card">
+        
+        <div class="auth-form-header">
+          <img src="{{ url_for('static', filename='images/logo-icon.svg') }}" alt="MediCare Hub" style="width: 44px; height: 44px; margin-bottom: 1rem;">
+          <h2>Create Your Account</h2>
+          <p>Register below to start protecting your loved ones' health.</p>
+        </div>
+
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="toast toast-{{ 'danger' if category == 'error' else category }}" style="margin-bottom: 1.5rem; animation: none;">
+                <div class="toast-icon">
+                  <i class="fas {% if category == 'error' %}fa-exclamation-circle{% elif category == 'success' %}fa-check-circle{% else %}fa-info-circle{% endif %}"></i>
+                </div>
+                <div class="toast-body">
+                  <div class="toast-title">{{ category|capitalize }}</div>
+                  <div class="toast-message">{{ message }}</div>
+                </div>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form action="{{ url_for('register') }}" method="POST">
+          <div class="form-group">
+            <label for="name" class="form-label">Full Name</label>
+            <input type="text" id="name" name="name" class="form-control" placeholder="Sarah Johnson" required autofocus>
+          </div>
+
+          <div class="form-group">
+            <label for="email" class="form-label">Email Address</label>
+            <input type="email" id="email" name="email" class="form-control" placeholder="sarah@example.com" required>
+          </div>
+
+          <div class="form-group">
+            <label for="phone" class="form-label">Phone Number</label>
+            <input type="tel" id="phone" name="phone" class="form-control" placeholder="+1 (555) 019-2834">
+          </div>
+
+          <div class="form-group">
+            <label for="role" class="form-label">Account Purpose</label>
+            <select id="role" name="role" class="form-control form-select">
+              <option value="user" selected>Family Caregiver / Individual</option>
+              <option value="pharmacy_admin">Community Pharmacy Manager</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" id="password" name="password" class="form-control" placeholder="Minimum 6 characters" minlength="6" required>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top: 1.5rem;">
+            <i class="fas fa-user-plus"></i> Complete Registration
+          </button>
+        </form>
+
+        <div style="margin-top: 2rem; text-align: center; font-size: 0.9rem; color: var(--text-muted);">
+          Already have an account? 
+          <a href="{{ url_for('login') }}" style="font-weight: 600; color: var(--primary-blue);">Sign In</a>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+

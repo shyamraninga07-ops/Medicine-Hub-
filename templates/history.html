@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Medicine History &amp; Analytics – MediCare Hub{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="page-header">
+    <div class="page-title-wrap">
+      <h1>Medicine History &amp; Adherence Reports</h1>
+      <p>Analyze dose adherence patterns, consumption trends, and refill history across your family.</p>
+    </div>
+    <div class="page-actions">
+      <button type="button" class="btn btn-secondary" id="btnExportCsv">
+        <i class="fas fa-file-csv"></i> Export CSV Report
+      </button>
+    </div>
+  </div>
+
+  <!-- Analytics Charts Grid (4 Chart.js Visualizations) -->
+  <div class="analytics-charts-grid">
+    
+    <!-- Chart 1: Taken vs Missed Donut -->
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div>
+          <div class="chart-title">Dose Adherence Ratio</div>
+          <span style="font-size: 0.78rem; color: var(--text-muted);">Overall taken vs missed doses</span>
+        </div>
+        <span class="badge badge-success">{{ overall_adherence_pct }}% Adherence</span>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="chartTakenMissed" data-taken="{{ total_taken_count }}" data-missed="{{ total_missed_count }}"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 2: 7-Day Trend Line -->
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div>
+          <div class="chart-title">Weekly Adherence Percentage</div>
+          <span style="font-size: 0.78rem; color: var(--text-muted);">Daily adherence trajectory</span>
+        </div>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="chartAdherenceTrend"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 3: Monthly Medicine Consumption -->
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div>
+          <div class="chart-title">Medicine Consumption Breakdown</div>
+          <span style="font-size: 0.78rem; color: var(--text-muted);">Units consumed across family prescriptions</span>
+        </div>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="chartMedConsumption"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 4: Refill Statistics & Costs -->
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div>
+          <div class="chart-title">Prescription Refill Costs</div>
+          <span style="font-size: 0.78rem; color: var(--text-muted);">Recent medication pharmacy expenditures</span>
+        </div>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="chartRefillStats"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- History Log Filter Bar -->
+  <div class="prescriptions-filter-bar">
+    <div style="flex: 1; min-width: 220px; position: relative;">
+      <i class="fas fa-search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-light);"></i>
+      <input type="text" id="histSearchInput" class="form-control" style="padding-left: 2.5rem;" placeholder="Search history logs...">
+    </div>
+
+    <div style="min-width: 180px;">
+      <select id="histMemberFilter" class="form-control form-select">
+        <option value="">All Family Members</option>
+        {% for member in family_members %}
+          <option value="{{ member.full_name }}">{{ member.full_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="min-width: 150px;">
+      <select id="histStatusFilter" class="form-control form-select">
+        <option value="">All Statuses</option>
+        <option value="taken">Taken</option>
+        <option value="missed">Missed</option>
+      </select>
+    </div>
+
+    <div style="font-size: 0.85rem; color: var(--text-muted); margin-left: auto;" id="histCountDisplay">
+      Showing {{ dose_records|length }} records
+    </div>
+  </div>
+
+  <!-- Dose & Refill History Table -->
+  <div class="card">
+    <div class="card-header">
+      <h3>Dose Administration Records</h3>
+    </div>
+    <div class="card-body" style="padding: 0;">
+      <div class="table-responsive">
+        <table class="table-custom">
+          <thead>
+            <tr>
+              <th>Date &amp; Time</th>
+              <th>Family Member</th>
+              <th>Medicine</th>
+              <th>Time Slot</th>
+              <th>Dosage</th>
+              <th>Status</th>
+              <th>Stock Effect</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody">
+            {% for log in dose_records %}
+            <tr data-member="{{ log.family_member.full_name if log.family_member else '' }}" data-status="{{ log.status }}">
+              <td>
+                <strong>{{ log.scheduled_date }}</strong>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">
+                  {{ log.taken_at.strftime('%I:%M %p') if log.taken_at else 'Scheduled' }}
+                </div>
+              </td>
+              <td>
+                <div style="display: flex; align-items: center; gap: 0.4rem;">
+                  <i class="fas fa-user-circle" style="color: var(--primary-blue);"></i>
+                  <strong>{{ log.family_member.full_name if log.family_member else 'Family Member' }}</strong>
+                </div>
+              </td>
+              <td><strong>{{ log.prescription.medicine_name if log.prescription else 'Prescription' }}</strong></td>
+              <td><span class="badge badge-navy">{{ log.scheduled_time }}</span></td>
+              <td>{{ log.dosage_taken }} {{ log.prescription.dosage_unit if log.prescription else 'units' }}</td>
+              <td>
+                {% if log.status == 'taken' %}
+                  <span class="badge badge-success"><i class="fas fa-check"></i> Taken</span>
+                {% else %}
+                  <span class="badge badge-danger"><i class="fas fa-times"></i> Missed</span>
+                {% endif %}
+              </td>
+              <td style="font-size: 0.8rem;">
+                {% if log.status == 'taken' %}
+                  <span style="color: var(--danger-dark); font-weight: 600;">-{{ log.dosage_taken }} unit deducted</span>
+                {% else %}
+                  <span style="color: var(--text-muted);">No deduction</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/history.js') }}"></script>
+{% endblock %}
+

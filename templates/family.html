@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+
+{% block title %}Family Profiles – MediCare Hub{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="page-header">
+    <div class="page-title-wrap">
+      <h1>Family Health Records</h1>
+      <p>Manage health profiles, allergies, chronic conditions, and emergency contacts for all family members.</p>
+    </div>
+    <div class="page-actions">
+      <button type="button" class="btn btn-primary" onclick="openAddMemberModal()">
+        <i class="fas fa-user-plus"></i> Add Family Member
+      </button>
+    </div>
+  </div>
+
+  <!-- Family Profiles Grid -->
+  <div class="family-grid">
+    {% for member in family_members %}
+    <div class="family-card" id="memberCard-{{ member.id }}">
+      <div class="family-card-header">
+        <img src="{{ member.avatar_url or url_for('static', filename='images/default-avatar.svg') }}" 
+             alt="{{ member.full_name }}" class="family-avatar">
+        <div class="family-title-info">
+          <div class="family-name">{{ member.full_name }}</div>
+          <div class="family-sub">
+            <span class="badge badge-primary">{{ member.relationship }}</span>
+            <span>• {{ member.age }} years old</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="family-details-list">
+        <div class="detail-row">
+          <span class="detail-label"><i class="fas fa-tint" style="color: var(--danger-red);"></i> Blood Group</span>
+          <span class="detail-value">
+            <span class="badge badge-danger" style="font-weight: 700;">{{ member.blood_group }}</span>
+          </span>
+        </div>
+
+        <div class="detail-row">
+          <span class="detail-label"><i class="fas fa-venus-mars" style="color: var(--primary-blue);"></i> Gender</span>
+          <span class="detail-value">{{ member.gender }}</span>
+        </div>
+
+        <div class="detail-row">
+          <span class="detail-label"><i class="fas fa-calendar-day" style="color: var(--text-muted);"></i> Date of Birth</span>
+          <span class="detail-value">{{ member.dob.strftime('%B %d, %Y') if member.dob else 'N/A' }}</span>
+        </div>
+
+        <div class="detail-row">
+          <span class="detail-label"><i class="fas fa-shield-virus" style="color: var(--warning-orange);"></i> Allergies</span>
+          <span class="detail-value" style="color: {% if member.allergies and member.allergies != 'None known' %}var(--danger-red){% else %}var(--text-muted){% endif %};">
+            {{ member.allergies or 'None known' }}
+          </span>
+        </div>
+
+        <div class="detail-row">
+          <span class="detail-label"><i class="fas fa-heartbeat" style="color: var(--healthcare-green);"></i> Conditions</span>
+          <span class="detail-value">{{ member.medical_conditions or 'None' }}</span>
+        </div>
+
+        <div class="detail-row">
+          <span class="detail-label"><i class="fas fa-phone-alt" style="color: var(--primary-blue);"></i> Emergency</span>
+          <span class="detail-value">{{ member.emergency_contact or 'Not set' }}</span>
+        </div>
+
+        <div class="detail-row">
+          <span class="detail-label"><i class="fas fa-pills" style="color: var(--primary-blue);"></i> Active Rx</span>
+          <span class="detail-value">
+            <span class="badge badge-success">{{ member.prescriptions|length }} Prescriptions</span>
+          </span>
+        </div>
+      </div>
+
+      <div class="family-card-actions">
+        <button type="button" class="btn btn-secondary btn-sm" onclick='viewMemberRecord({{ member.to_dict()|tojson }}, {{ member.prescriptions|map(attribute="to_dict")|list|tojson }})'>
+          <i class="fas fa-notes-medical"></i> Health Record
+        </button>
+        <div style="display: flex; gap: 0.4rem;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick='editMember({{ member.to_dict()|tojson }})' title="Edit Profile">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="confirmDeleteMember({{ member.id }}, '{{ member.full_name|escape }}')" title="Delete Member" style="color: var(--danger-red);">
+            <i class="fas fa-trash-alt"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+
+<!-- Modal: Add / Edit Family Member -->
+<div class="modal-overlay" id="familyMemberModal">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h3 id="familyModalTitle">Add Family Member</h3>
+      <button type="button" class="modal-close-btn" onclick="closeModal('familyMemberModal')">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <form action="{{ url_for('save_family_member') }}" method="POST" id="familyMemberForm">
+      <input type="hidden" name="member_id" id="formMemberId">
+
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="full_name">Full Name *</label>
+            <input type="text" id="full_name" name="full_name" class="form-control" placeholder="e.g. David Johnson" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="relationship">Relationship *</label>
+            <select id="relationship" name="relationship" class="form-control form-select" required>
+              <option value="Self">Self</option>
+              <option value="Spouse">Spouse</option>
+              <option value="Child">Child</option>
+              <option value="Parent">Parent</option>
+              <option value="Sibling">Sibling</option>
+              <option value="Grandparent">Grandparent</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="dob">Date of Birth *</label>
+            <input type="date" id="dob" name="dob" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="gender">Gender</label>
+            <select id="gender" name="gender" class="form-control form-select">
+              <option value="Female">Female</option>
+              <option value="Male">Male</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="blood_group">Blood Group</label>
+            <select id="blood_group" name="blood_group" class="form-control form-select">
+              <option value="Unknown">Unknown</option>
+              <option value="A+">A+</option>
+              <option value="A-">A-</option>
+              <option value="B+">B+</option>
+              <option value="B-">B-</option>
+              <option value="AB+">AB+</option>
+              <option value="AB-">AB-</option>
+              <option value="O+">O+</option>
+              <option value="O-">O-</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="allergies">Known Drug / Food Allergies</label>
+          <input type="text" id="allergies" name="allergies" class="form-control" placeholder="e.g. Penicillin, Peanuts, Sulfa (or 'None known')">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="medical_conditions">Existing Medical Conditions</label>
+          <input type="text" id="medical_conditions" name="medical_conditions" class="form-control" placeholder="e.g. Type 2 Diabetes, Hypertension, Asthma">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="emergency_contact">Emergency Contact Info</label>
+          <input type="text" id="emergency_contact" name="emergency_contact" class="form-control" placeholder="e.g. +1 (555) 019-2834 (Sarah)">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="notes">Clinical / Caregiver Notes</label>
+          <textarea id="notes" name="notes" class="form-control" rows="2" placeholder="Dietary instructions, pediatrician details, or reminders..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('familyMemberModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveMemberBtn">
+          <i class="fas fa-save"></i> Save Profile
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Individual Health Record Details -->
+<div class="modal-overlay" id="healthRecordModal">
+  <div class="modal-container" style="max-width: 680px;">
+    <div class="modal-header">
+      <h3 id="recordModalTitle">Health Record</h3>
+      <button type="button" class="modal-close-btn" onclick="closeModal('healthRecordModal')">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body" id="recordModalBody">
+      <!-- Dynamically filled by JS -->
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('healthRecordModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Form -->
+<form id="deleteMemberForm" action="{{ url_for('delete_family_member') }}" method="POST" style="display: none;">
+  <input type="hidden" name="member_id" id="deleteMemberId">
+</form>
+
+<script>
+  function openAddMemberModal() {
+    document.getElementById('familyModalTitle').textContent = 'Add Family Member';
+    document.getElementById('familyMemberForm').reset();
+    document.getElementById('formMemberId').value = '';
+    openModal('familyMemberModal');
+  }
+
+  function editMember(member) {
+    document.getElementById('familyModalTitle').textContent = 'Edit Profile: ' + member.full_name;
+    document.getElementById('formMemberId').value = member.id;
+    document.getElementById('full_name').value = member.full_name;
+    document.getElementById('relationship').value = member.relationship;
+    document.getElementById('dob').value = member.dob;
+    document.getElementById('gender').value = member.gender;
+    document.getElementById('blood_group').value = member.blood_group;
+    document.getElementById('allergies').value = member.allergies || '';
+    document.getElementById('medical_conditions').value = member.medical_conditions || '';
+    document.getElementById('emergency_contact').value = member.emergency_contact || '';
+    document.getElementById('notes').value = member.notes || '';
+    openModal('familyMemberModal');
+  }
+
+  function confirmDeleteMember(id, name) {
+    if (confirm(`Are you sure you want to remove ${name}? This will also delete their active prescriptions and dose records.`)) {
+      document.getElementById('deleteMemberId').value = id;
+      document.getElementById('deleteMemberForm').submit();
+    }
+  }
+
+  function viewMemberRecord(member, prescriptions) {
+    document.getElementById('recordModalTitle').textContent = member.full_name + ' – Health Profile';
+
+    let rxListHtml = '';
+    if (prescriptions && prescriptions.length > 0) {
+      rxListHtml = prescriptions.map(rx => `
+        <div style="background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem; margin-bottom: 0.6rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+            <strong style="color: var(--dark-navy);">${rx.medicine_name}</strong>
+            <span class="badge ${rx.stock_status === 'critical' ? 'badge-danger' : rx.stock_status === 'low' ? 'badge-warning' : 'badge-success'}">
+              Stock: ${Math.round(rx.available_stock)} ${rx.dosage_unit} (${rx.estimated_remaining_days}d left)
+            </span>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">
+            Dosage: ${rx.dosage_amount} ${rx.dosage_unit} • Frequency: ${rx.frequency} (${rx.time_slots || 'Scheduled'})
+          </div>
+          ${rx.doctor_name ? `<div style="font-size: 0.78rem; color: var(--primary-blue); margin-top: 0.2rem;"><i class="fas fa-user-md"></i> Prescribed by: ${rx.doctor_name}</div>` : ''}
+        </div>
+      `).join('');
+    } else {
+      rxListHtml = '<p style="color: var(--text-muted); font-size: 0.85rem;">No active prescriptions recorded for this family member.</p>';
+    }
+
+    document.getElementById('recordModalBody').innerHTML = `
+      <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-light);">
+        <img src="${member.avatar_url || '/static/images/default-avatar.svg'}" style="width: 56px; height: 56px; border-radius: 50%; border: 2px solid var(--primary-blue);">
+        <div>
+          <h4 style="font-size: 1.2rem; color: var(--dark-navy);">${member.full_name}</h4>
+          <span class="badge badge-primary">${member.relationship}</span>
+          <span style="font-size: 0.85rem; color: var(--text-muted); margin-left: 0.5rem;">${member.age} years old • Blood: ${member.blood_group}</span>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 1.25rem;">
+        <h5 style="font-size: 0.9rem; color: var(--navy-light); margin-bottom: 0.4rem;"><i class="fas fa-allergies" style="color: var(--danger-red);"></i> Allergies &amp; Chronic Conditions</h5>
+        <div style="font-size: 0.85rem; background: #FFFBFB; border: 1px solid #FEE2E2; border-radius: var(--radius-md); padding: 0.75rem;">
+          <div><strong>Allergies:</strong> ${member.allergies || 'None known'}</div>
+          <div><strong>Conditions:</strong> ${member.medical_conditions || 'None'}</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 1.25rem;">
+        <h5 style="font-size: 0.9rem; color: var(--navy-light); margin-bottom: 0.5rem;"><i class="fas fa-prescription-bottle-alt" style="color: var(--primary-blue);"></i> Active Prescriptions (${prescriptions.length})</h5>
+        ${rxListHtml}
+      </div>
+
+      ${member.emergency_contact ? `
+        <div style="font-size: 0.85rem; color: var(--text-muted); padding: 0.75rem; background: var(--bg-color); border-radius: var(--radius-md);">
+          <i class="fas fa-phone-alt" style="color: var(--primary-blue);"></i> Emergency Contact: <strong>${member.emergency_contact}</strong>
+        </div>
+      ` : ''}
+    `;
+
+    openModal('healthRecordModal');
+  }
+
+  // Check URL query param for instant modal open
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('action') === 'add') {
+    openAddMemberModal();
+  }
+</script>
+{% endblock %}
+

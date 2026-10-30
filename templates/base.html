@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}MediCare Hub – Your Family's Health, In One Place{% endblock %}</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/logo-icon.svg') }}">
+
+  <!-- Google Fonts: Inter & Poppins -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <!-- Leaflet CSS for Maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+  <!-- Global & Dashboard CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  {% if session.get('user_id') %}
+  <!-- Authenticated Application Shell -->
+  <div class="app-wrapper">
+
+    <!-- Sidebar Navigation -->
+    <aside class="app-sidebar" id="appSidebar">
+      <div class="sidebar-header">
+        <a href="{{ url_for('dashboard') }}" class="sidebar-logo">
+          <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="MediCare Hub Logo">
+        </a>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Main Menu</div>
+        <a href="{{ url_for('dashboard') }}" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
+          <i class="fas fa-th-large"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="{{ url_for('family_profiles') }}" class="nav-item {% if active_page == 'family' %}active{% endif %}">
+          <i class="fas fa-user-friends"></i>
+          <span>Family Profiles</span>
+        </a>
+        <a href="{{ url_for('prescriptions') }}" class="nav-item {% if active_page == 'prescriptions' %}active{% endif %}">
+          <i class="fas fa-prescription-bottle-alt"></i>
+          <span>Prescriptions</span>
+        </a>
+        <a href="{{ url_for('medicine_reminders') }}" class="nav-item {% if active_page == 'reminders' %}active{% endif %}">
+          <i class="fas fa-clock"></i>
+          <span>Medicine Reminders</span>
+        </a>
+        <a href="{{ url_for('refill_alerts') }}" class="nav-item {% if active_page == 'refills' %}active{% endif %}">
+          <i class="fas fa-exclamation-triangle"></i>
+          <span>Refill Alerts</span>
+          {% if pending_refills_count and pending_refills_count > 0 %}
+            <span class="nav-badge badge-alert" id="sidebarRefillBadge">{{ pending_refills_count }}</span>
+          {% endif %}
+        </a>
+        <a href="{{ url_for('pharmacy_finder') }}" class="nav-item {% if active_page == 'pharmacy' %}active{% endif %}">
+          <i class="fas fa-map-marked-alt"></i>
+          <span>Pharmacy Finder</span>
+        </a>
+        <a href="{{ url_for('medicine_history') }}" class="nav-item {% if active_page == 'history' %}active{% endif %}">
+          <i class="fas fa-chart-line"></i>
+          <span>Medicine History</span>
+        </a>
+
+        {% if session.get('user_role') == 'pharmacy_admin' %}
+        <div class="nav-section-title">Pharmacy Management</div>
+        <a href="{{ url_for('pharmacy_admin') }}" class="nav-item {% if active_page == 'pharmacy_admin' %}active{% endif %}">
+          <i class="fas fa-clinic-medical"></i>
+          <span>My Pharmacy Portal</span>
+        </a>
+        {% endif %}
+
+        <div class="nav-section-title">Preferences</div>
+        <a href="{{ url_for('settings_page') }}" class="nav-item {% if active_page == 'settings' %}active{% endif %}">
+          <i class="fas fa-cog"></i>
+          <span>Settings</span>
+        </a>
+      </nav>
+
+      <!-- Sidebar User Footer -->
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <img src="{{ current_user.avatar_url or url_for('static', filename='images/default-avatar.svg') }}" 
+               alt="{{ current_user.name }}" class="user-avatar-sm">
+          <div class="sidebar-user-info">
+            <span class="user-name">{{ current_user.name }}</span>
+            <span class="user-role">
+              {% if current_user.role == 'pharmacy_admin' %}Pharmacy Admin{% else %}Family Caregiver{% endif %}
+            </span>
+          </div>
+        </div>
+        <a href="{{ url_for('logout') }}" class="btn-logout-icon" title="Logout">
+          <i class="fas fa-sign-out-alt"></i>
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content Shell -->
+    <div class="app-main">
+
+      <!-- Top Navigation Bar -->
+      <header class="app-topbar">
+        <div class="topbar-left">
+          <button type="button" class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Toggle Navigation">
+            <i class="fas fa-bars"></i>
+          </button>
+          <div class="global-search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="globalSearchInput" class="global-search-input" 
+                   placeholder="Search medicine, prescription, or family member (Press Enter)...">
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <!-- DEMO MODE Indicator Badge -->
+          <div class="badge badge-warning" style="font-size: 0.74rem; font-weight: 700; padding: 0.38rem 0.8rem; letter-spacing: 0.03em; display: inline-flex; align-items: center; gap: 0.45rem; border: 1px solid rgba(255, 167, 38, 0.4);">
+            <i class="fas fa-flask"></i> DEMO MODE – Sample Data
+          </div>
+
+          <!-- Current Date Badge -->
+          <div class="topbar-date">
+            <i class="far fa-calendar-alt"></i>
+            <span id="currentDateDisplay">{{ current_date_display }}</span>
+          </div>
+
+          <!-- Notification Bell -->
+          <div class="profile-dropdown-wrapper">
+            <button type="button" class="notification-bell-btn" id="notifBellBtn" aria-label="Notifications">
+              <i class="far fa-bell"></i>
+              {% if unread_notifs_count and unread_notifs_count > 0 %}
+                <span class="notification-indicator"></span>
+              {% endif %}
+            </button>
+
+            <!-- Notification Dropdown Panel -->
+            <div class="dropdown-menu-custom" id="notifDropdown">
+              <div class="dropdown-header">
+                <h4>Notifications</h4>
+                <span class="badge badge-primary">{{ unread_notifs_count or 0 }} new</span>
+              </div>
+              <div class="notification-list">
+                {% if user_notifications %}
+                  {% for notif in user_notifications %}
+                  <a href="{{ notif.link or '#' }}" class="notification-item {% if not notif.is_read %}unread{% endif %}">
+                    <div class="notif-icon {{ notif.type }}">
+                      {% if notif.type == 'refill' %}
+                        <i class="fas fa-exclamation-triangle"></i>
+                      {% elif notif.type == 'reminder' %}
+                        <i class="fas fa-pills"></i>
+                      {% else %}
+                        <i class="fas fa-shield-alt"></i>
+                      {% endif %}
+                    </div>
+                    <div class="notif-content">
+                      <div class="notif-title">{{ notif.title }}</div>
+                      <div class="notif-desc">{{ notif.message }}</div>
+                      <div class="notif-time">{{ notif.created_at.strftime('%b %d, %I:%M %p') }}</div>
+                    </div>
+                  </a>
+                  {% endfor %}
+                {% else %}
+                  <div style="padding: 2rem 1rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+                    <i class="far fa-bell-slash" style="font-size: 1.5rem; margin-bottom: 0.5rem; display: block; color: var(--text-light);"></i>
+                    No unread notifications
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- User Profile Dropdown -->
+          <div class="profile-dropdown-wrapper">
+            <button type="button" class="profile-dropdown-trigger" id="profileDropdownBtn">
+              <img src="{{ current_user.avatar_url or url_for('static', filename='images/default-avatar.svg') }}" 
+                   alt="{{ current_user.name }}" class="user-avatar-md">
+              <i class="fas fa-chevron-down" style="font-size: 0.75rem; color: var(--text-muted);"></i>
+            </button>
+
+            <div class="dropdown-menu-custom user-menu-dropdown" id="profileDropdownMenu">
+              <div style="padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--border-light);">
+                <div style="font-weight: 700; color: var(--dark-navy);">{{ current_user.name }}</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">{{ current_user.email }}</div>
+              </div>
+              <a href="{{ url_for('settings_page') }}">
+                <i class="fas fa-user-circle"></i> Profile &amp; Settings
+              </a>
+              <a href="{{ url_for('refill_alerts') }}">
+                <i class="fas fa-bell"></i> Refill Reminders
+              </a>
+              <hr>
+              <a href="{{ url_for('logout') }}" style="color: var(--danger-red);">
+                <i class="fas fa-sign-out-alt"></i> Sign Out
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </header>
+
+      <!-- Page Content -->
+      <main class="page-content">
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="toast toast-{{ 'danger' if category == 'error' else category }}" style="margin-bottom: 1.5rem; animation: none;">
+                <div class="toast-icon">
+                  <i class="fas {% if category == 'error' %}fa-exclamation-circle{% elif category == 'success' %}fa-check-circle{% else %}fa-info-circle{% endif %}"></i>
+                </div>
+                <div class="toast-body">
+                  <div class="toast-title">{{ category|capitalize }}</div>
+                  <div class="toast-message">{{ message }}</div>
+                </div>
+                <button type="button" class="modal-close-btn" onclick="this.parentElement.remove()">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+      </main>
+
+    </div>
+  </div>
+
+  {% else %}
+    <!-- Public / Auth Flow -->
+    <main>
+      {% block auth_content %}{% endblock %}
+    </main>
+  {% endif %}
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Core App Scripts -->
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>
+
